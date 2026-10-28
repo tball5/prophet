@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
 <title>The Prophet · Superpower Creator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,11 +22,13 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{min-height:100%}
   body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;overflow-x:hidden}
-  #rain-canvas{position:fixed;inset:0;z-index:0;display:block}
+  /* Fixed to the LARGE viewport height so the mobile URL bar showing/hiding never needs a resize. */
+  #rain-canvas{position:fixed;inset:0;top:0;left:0;width:100%;height:100vh;height:100lvh;z-index:0;display:block;pointer-events:none}
 
   .wrap{
-    position:relative;z-index:1;min-height:100vh;
+    position:relative;z-index:1;min-height:100vh;min-height:100svh;
     max-width:1200px;margin:0 auto;padding:32px 24px;
+    padding:max(32px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(32px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));
     display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,560px);
     gap:40px;align-items:center;
   }
@@ -57,6 +60,10 @@
   .dot.off{background:var(--danger);box-shadow:0 0 10px var(--danger)}
   .chat-head strong{font-family:'Orbitron',sans-serif;letter-spacing:.1em;font-size:14px}
   .chat-head span{margin-left:auto;color:var(--muted);font-size:12px}
+  .chat-body{flex:1;min-height:0;display:flex;flex-direction:column}
+  .chat-arrow{display:none;color:var(--green);font-size:16px;transition:transform .2s}
+  .chat-new{display:none;font-size:10px;letter-spacing:.15em;color:#1a1203;background:var(--green);border-radius:6px;padding:2px 6px;box-shadow:0 0 10px var(--green);animation:blink 1.4s steps(1) infinite}
+  .chat-new.on{display:inline-block}
 
   .log{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--green-soft) transparent}
   .msg{max-width:85%;padding:10px 14px;border-radius:10px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;font-size:15px}
@@ -75,6 +82,32 @@
   .power-card p{font-size:14px;line-height:1.5;margin-bottom:6px}
   .power-card .meta{color:var(--muted);font-size:13px}
   .power-card button{margin-top:10px}
+  .power-card .field{display:block;font-size:11px;letter-spacing:.2em;color:var(--muted);margin-top:8px}
+  .power-card input,.power-card textarea{
+    display:block;width:100%;margin-top:4px;padding:10px 12px;border-radius:10px;
+    background:rgba(0,0,0,.55);color:var(--text);border:1px solid var(--green-soft);font:inherit;font-size:15px;outline:none;
+  }
+  .power-card input{font-family:'Orbitron',sans-serif;color:var(--green);font-size:16px}
+  .power-card textarea{resize:vertical;min-height:64px;max-height:220px;line-height:1.45}
+  .power-card input:focus,.power-card textarea:focus{border-color:var(--green);box-shadow:0 0 12px var(--green-soft)}
+  .power-card input:disabled,.power-card textarea:disabled{opacity:.75}
+  .power-card .count{font-size:11px;color:var(--muted);text-align:right;margin-top:2px}
+  .power-card .err{color:var(--danger);font-size:13px;margin-top:8px;min-height:0}
+  .power-card .err:empty{display:none}
+  .power-card .actions{display:flex;flex-wrap:wrap;gap:10px}
+  .power-card .actions button{margin-top:10px}
+  .power-card.saved{border-color:var(--green-soft)}
+
+  .chat-tools{display:flex;justify-content:flex-end;padding:8px 14px 0;border-top:1px solid var(--green-faint)}
+  .chat-tools button{min-height:34px;font-size:11px;padding:0 14px}
+  .chat-tools + form.input{border-top:none}
+
+  .matches{align-self:stretch;border:1px dashed var(--green-soft);border-radius:12px;padding:10px 12px;background:rgba(0,0,0,.35)}
+  .matches .label{font-size:11px;letter-spacing:.3em;color:var(--muted);margin-bottom:8px}
+  .matches .match{border:1px solid var(--green-faint);border-radius:8px;padding:8px 10px;margin-top:6px;cursor:pointer;background:rgba(232,194,90,.05)}
+  .matches .match:hover,.matches .match:focus-visible{border-color:var(--green);outline:none}
+  .matches .match h4{color:var(--green);font-size:14px;margin-bottom:2px}
+  .matches .match p{font-size:13px;line-height:1.4;opacity:.85}
 
   .typing{align-self:flex-start;color:var(--muted);font-size:14px}
   .typing::after{content:'▋';animation:blink 1s steps(1) infinite;margin-left:4px;color:var(--green)}
@@ -127,11 +160,60 @@
   .empty{color:var(--muted);font-size:14px}
 
   @media (max-width:860px){
-    .wrap{grid-template-columns:1fr;gap:24px;padding:24px 16px}
-    .hero-frame{width:min(60vw,260px)}
-    .chat{height:70vh}
+    .wrap{
+      grid-template-columns:minmax(0,1fr);gap:24px;align-items:start;
+      padding:24px 16px;
+      padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+    }
+    .hero-frame{width:min(55vw,200px)}
+    .hero h1{margin-top:14px;white-space:normal;overflow-wrap:break-word;font-size:clamp(22px,7vw,34px)}
+    .hero p{font-size:12px;letter-spacing:.25em}
+    .chat{height:70vh;height:min(70dvh,560px);min-height:360px}
+    .chat-head[role="button"]{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+    .chat-head[role="button"]:focus-visible{outline:2px solid var(--green);outline-offset:-4px;border-radius:14px}
+    .chat-head[role="button"] .chat-arrow{display:inline-block}
+    .chat-head[aria-expanded="true"] .chat-arrow{transform:rotate(180deg)}
+    .chat.collapsed{height:auto;min-height:0}
+    .chat.collapsed .chat-head{border-bottom:none}
+    .chat.collapsed .chat-body{display:none}
+    .msg{max-width:90%}
+    form.input{padding:12px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
+    form.input textarea{font-size:16px}           /* 16px+ stops iOS zoom on focus */
+    form.input button{min-height:46px;min-width:76px}
+    .chat-tools button{min-height:40px}
+    .power-card input,.power-card textarea{font-size:16px}   /* no iOS zoom */
+    .vault{padding:14px}
     .vault-toggle{font-size:14px}
-    .vault-tools button{flex:1 1 auto}
+    .vault-tools input{font-size:16px;min-height:44px}
+    .vault-tools button{flex:1 1 auto;min-height:44px}
+    .vault-more button{min-height:44px;min-width:160px}
+    .vault-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr))}
+  }
+  @media (max-width:480px){
+    .wrap{gap:18px}
+    .hero-frame{width:min(50vw,180px)}
+    .hero h1{letter-spacing:.05em}
+    .hero p{letter-spacing:.2em}
+    .chat-head{flex-wrap:wrap;gap:6px 10px;padding:12px 14px}
+    .chat-head strong{font-size:12px}
+    .chat-head span{font-size:11px}
+    .chat-head[role="button"] .chat-new{order:3}
+    .chat-head[role="button"] .chat-arrow{order:4;margin-left:auto}
+    .chat-head[role="button"] #status-text{order:5;flex-basis:100%;margin-left:20px}
+    .log{padding:14px 12px}
+    .msg{font-size:15px;padding:9px 12px}
+    form.input{gap:8px}
+    form.input textarea{padding:12px}
+    form.input textarea::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .vault-toggle{font-size:13px;letter-spacing:.1em}
+    .vault-tools input{flex:1 1 100%}
+    .vault-tools button{flex:1 1 0}
+    .vault-grid{grid-template-columns:minmax(0,1fr)}
+    .power-card h3{font-size:16px}
+    .power-card{padding:12px}
+    .power-card .actions button{flex:1 1 0;min-height:44px}
+    .chat-tools{padding:8px 12px 0}
+    .chat-tools button{flex:1 1 auto}
   }
 </style>
 </head>
@@ -153,12 +235,17 @@
       <div class="dot" id="status-dot"></div>
       <strong>THE PROPHET // ONLINE</strong>
       <span id="status-text">secure channel</span>
+      <em class="chat-new" id="chat-new" aria-hidden="true">NEW</em>
+      <b class="chat-arrow" aria-hidden="true">▾</b>
     </header>
+    <div class="chat-body" id="chat-body">
     <div class="log" id="log" aria-live="polite"></div>
+    <div class="chat-tools"><button class="ghost" id="add-own" type="button">+ ADD YOUR OWN POWER</button></div>
     <form class="input" id="chat-form">
       <textarea id="chat-input" placeholder="Describe the power you want..." rows="1" maxlength="2000"></textarea>
       <button type="submit" id="send-btn">SEND</button>
     </form>
+    </div>
   </section>
 
   <section class="vault" aria-label="Saved superpowers">
@@ -184,14 +271,47 @@
   const API_BASE = 'https://prophet-api.prophetapi.workers.dev';
 
   // Matrix Rain
+  // Mobile-safe: the canvas is sized to the tallest viewport once, and only rebuilds when the
+  // WIDTH changes (rotation / desktop resize). Hiding/showing the URL bar while scrolling only
+  // changes the height, so the rain just keeps flowing.
   const rainCanvas = document.getElementById('rain-canvas');
   const ctx = rainCanvas.getContext('2d');
-  rainCanvas.width = window.innerWidth;
-  rainCanvas.height = window.innerHeight;
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()_+-=[]{}|;:\'",.<>?/～!！@#￥%……&*（）——+【】｛｝；：＂＇，。、《》？';
   const fontSize = 14;
-  let columns = rainCanvas.width / fontSize;
-  let drops = Array(Math.floor(columns)).fill(1);
+  const STEP_MS = 110;                 // higher = slower rain
+  const REDUCED_STEP_MS = 1200;        // prefers-reduced-motion: slow drift
+  const motionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  let drops = [];
+  let rainW = 0, rainH = 0, glow = 18;
+
+  function rainHeight() {
+    return Math.max(window.innerHeight, (window.screen && screen.height) || 0, rainCanvas.clientHeight || 0);
+  }
+  function randomRow() { return Math.floor(Math.random() * (rainH / fontSize)); }
+
+  function sizeRain() {
+    const w = window.innerWidth;
+    const h = Math.max(rainHeight(), rainH);   // never shrink the height
+    if (w === rainW && h === rainH) return false;
+    const first = rainW === 0;
+    let snapshot = null;
+    if (!first) {                               // keep what's already drawn
+      snapshot = document.createElement('canvas');
+      snapshot.width = rainCanvas.width; snapshot.height = rainCanvas.height;
+      snapshot.getContext('2d').drawImage(rainCanvas, 0, 0);
+    }
+    rainW = w; rainH = h;
+    rainCanvas.width = w; rainCanvas.height = h;  // (this clears the bitmap)
+    rainCanvas.style.height = h + 'px';
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, w, h);
+    if (snapshot) ctx.drawImage(snapshot, 0, 0);
+    glow = w <= 480 ? 10 : 18;                   // lighter glow on phones (performance)
+    const cols = Math.floor(w / fontSize);
+    if (cols < drops.length) drops.length = cols;  // narrower: drop extra columns
+    while (drops.length < cols) drops.push(randomRow()); // wider: new columns already mid-fall
+    return first;
+  }
 
   function drawRain() {
     ctx.shadowBlur = 0;
@@ -199,7 +319,7 @@
     ctx.fillRect(0, 0, rainCanvas.width, rainCanvas.height);
     ctx.fillStyle = '#00ff88';           // green characters
     ctx.shadowColor = '#1e90ff';         // bluish glow
-    ctx.shadowBlur = 18;
+    ctx.shadowBlur = glow;
     ctx.font = fontSize + 'px monospace';
     for (let i = 0; i < drops.length; i++) {
       const text = chars[Math.floor(Math.random() * chars.length)];
@@ -209,15 +329,31 @@
     }
   }
 
-  drawRain();
-  setInterval(drawRain, 110); // higher = slower rain
+  // Boot: drops start scattered over the screen, plus a few warm-up steps so trails exist.
+  sizeRain();
+  for (let i = 0; i < 12; i++) drawRain();
 
-  window.addEventListener('resize', () => {
-    rainCanvas.width = window.innerWidth;
-    rainCanvas.height = window.innerHeight;
-    columns = rainCanvas.width / fontSize;
-    drops = Array(Math.floor(columns)).fill(1);
-  });
+  let rainRaf = 0, lastStep = 0;
+  function rainFrame(t) {
+    rainRaf = requestAnimationFrame(rainFrame);
+    const step = motionQuery && motionQuery.matches ? REDUCED_STEP_MS : STEP_MS;
+    if (t - lastStep < step) return;
+    lastStep = t;
+    drawRain();
+  }
+  function startRain() { if (!rainRaf) { lastStep = 0; rainRaf = requestAnimationFrame(rainFrame); } }
+  function stopRain() { cancelAnimationFrame(rainRaf); rainRaf = 0; }
+  document.addEventListener('visibilitychange', () => { document.hidden ? stopRain() : startRain(); });
+  if (!document.hidden) startRain();
+
+  let resizeQueued = false;
+  function onViewportChange() {
+    if (resizeQueued) return;
+    resizeQueued = true;
+    requestAnimationFrame(() => { resizeQueued = false; sizeRain(); });
+  }
+  window.addEventListener('resize', onViewportChange);
+  window.addEventListener('orientationchange', onViewportChange);
 
   // ====== Chat ======
   const log = document.getElementById('log');
@@ -234,7 +370,14 @@
       headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((data.error && data.error.message) || (typeof data.error === 'string' ? data.error : '') || `Request failed (${res.status})`);
+    if (!res.ok) {
+      const err = new Error((data.error && data.error.message) || (typeof data.error === 'string' ? data.error : '') || `Request failed (${res.status})`);
+      err.status = res.status;
+      err.code = data.error && data.error.code;
+      err.retryAfter = (data.error && data.error.retry_after) || Number(res.headers.get('retry-after')) || 0;
+      err.data = data;
+      throw err;
+    }
     return data;
   }
 
@@ -254,40 +397,137 @@
     return el;
   }
 
-  function addPowerCard(power) {
+  // Editable power card. power = Prophet suggestion (prefilled) or null (blank "add your own").
+  const NAME_MIN = 2, NAME_MAX = 80, DESC_MAX = 500;
+  function cleanField(v) { return v.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim(); }
+
+  function addPowerCard(power, opts = {}) {
+    const own = !power;
     const card = document.createElement('div');
-    card.className = 'power-card';
+    card.className = 'power-card' + (own ? ' own' : '');
     const label = document.createElement('div');
     label.className = 'label';
-    label.textContent = 'NEW SUPERPOWER FORGED';
-    const h3 = document.createElement('h3');
-    h3.textContent = power.name;
-    const p = document.createElement('p');
-    p.textContent = power.description;
+    label.textContent = own ? 'FORGE YOUR OWN POWER' : 'NEW SUPERPOWER FORGED · EDIT BEFORE SAVING';
+
+    const nameLabel = document.createElement('label');
+    nameLabel.className = 'field';
+    nameLabel.textContent = 'NAME';
+    const nameIn = document.createElement('input');
+    nameIn.type = 'text';
+    nameIn.className = 'power-name';
+    nameIn.maxLength = NAME_MAX;
+    nameIn.autocomplete = 'off';
+    nameIn.placeholder = 'e.g. Spoon Echo';
+    nameIn.value = own ? '' : String(power.name || '').slice(0, NAME_MAX);
+    nameLabel.appendChild(nameIn);
+
+    const descLabel = document.createElement('label');
+    descLabel.className = 'field';
+    descLabel.textContent = 'DESCRIPTION';
+    const descIn = document.createElement('textarea');
+    descIn.className = 'power-desc';
+    descIn.maxLength = DESC_MAX;
+    descIn.rows = 3;
+    descIn.placeholder = 'What does this gloriously useless power do?';
+    descIn.value = own ? '' : String(power.description || '').slice(0, DESC_MAX);
+    descLabel.appendChild(descIn);
+    const count = document.createElement('div');
+    count.className = 'count';
+    const updateCount = () => { count.textContent = descIn.value.length + '/' + DESC_MAX; };
+    updateCount();
+    descIn.addEventListener('input', updateCount);
+
     const meta = document.createElement('div');
     meta.className = 'meta';
-    meta.textContent = [
+    if (!own) meta.textContent = [
       power.weakness ? 'Weakness: ' + power.weakness : '',
       power.level ? 'Power level: ' + power.level + '/10' : ''
     ].filter(Boolean).join('  ·  ');
+
+    const err = document.createElement('div');
+    err.className = 'err';
+    err.setAttribute('role', 'status');
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
     const btn = document.createElement('button');
     btn.type = 'button';
+    btn.className = 'save-power';
     btn.textContent = 'SAVE TO VAULT';
+    actions.appendChild(btn);
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'ghost cancel-power';
+    cancel.textContent = own ? 'CANCEL' : 'DISMISS';
+    cancel.addEventListener('click', () => card.remove());
+    actions.appendChild(cancel);
+
+    const setBusy = busy => { nameIn.disabled = busy; descIn.disabled = busy; btn.disabled = busy; cancel.disabled = busy; };
+
     btn.addEventListener('click', async () => {
-      btn.disabled = true;
+      err.textContent = '';
+      const name = cleanField(nameIn.value).replace(/\s+/g, ' ');
+      const description = cleanField(descIn.value);
+      if (name.length < NAME_MIN || name.length > NAME_MAX) { err.textContent = 'Name must be ' + NAME_MIN + '–' + NAME_MAX + ' characters.'; nameIn.focus(); return; }
+      if (!description) { err.textContent = 'Give it a description (up to ' + DESC_MAX + ' characters).'; descIn.focus(); return; }
+      if (description.length > DESC_MAX) { err.textContent = 'Description must be at most ' + DESC_MAX + ' characters.'; descIn.focus(); return; }
+      setBusy(true);
       btn.textContent = 'SAVING...';
       try {
-        await api('/api/powers', { method: 'POST', body: JSON.stringify({ name: power.name, description: power.description }) });
+        const data = await api('/api/powers', { method: 'POST', body: JSON.stringify({ name, description }) });
+        const savedName = (data.power && data.power.name) || name;
+        nameIn.value = savedName;
         btn.textContent = 'SAVED ✓';
+        cancel.remove();
+        card.classList.add('saved');
+        label.textContent = 'SAVED TO THE VAULT';
+        nameIn.disabled = true; descIn.disabled = true; btn.disabled = true;
         onPowerSaved();
-      } catch (err) {
-        btn.disabled = false;
-        btn.textContent = 'RETRY SAVE';
-        addMessage('system', 'Could not save: ' + err.message);
+      } catch (e) {
+        setBusy(false);
+        btn.textContent = 'SAVE TO VAULT';
+        if (e.status === 409) err.textContent = e.message + ' Rename it and try again.';
+        else if (e.status === 429) err.textContent = 'The vault needs a breather. Try again in ' + (e.retryAfter || 60) + ' seconds.';
+        else if (e.status === 400) err.textContent = e.message;
+        else err.textContent = 'Could not save: ' + e.message;
+        if (e.status === 409) { nameIn.focus(); nameIn.select(); }
       }
     });
-    card.append(label, h3, p, meta, btn);
+
+    card.append(label, nameLabel, descLabel, count);
+    if (meta.textContent) card.appendChild(meta);
+    card.append(err, actions);
     log.appendChild(card);
+    scrollDown();
+    if (own && opts.focus !== false) nameIn.focus({ preventScroll: true });
+    return card;
+  }
+
+  // Existing vault powers the Prophet found (read-only; tap one to open it in the vault).
+  function addMatches(matches, total) {
+    const box = document.createElement('div');
+    box.className = 'matches';
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = 'FROM THE VAULT · ' + matches.length + ' FOUND' + (typeof total === 'number' ? ' OF ' + total : '');
+    box.appendChild(label);
+    matches.forEach(m => {
+      const item = document.createElement('div');
+      item.className = 'match';
+      item.tabIndex = 0;
+      item.setAttribute('role', 'button');
+      item.title = 'Show in the Power Vault';
+      const h4 = document.createElement('h4');
+      h4.textContent = m.name;
+      const p = document.createElement('p');
+      p.textContent = m.description;
+      item.append(h4, p);
+      const open = () => showInVault(m.name);
+      item.addEventListener('click', open);
+      item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+      box.appendChild(item);
+    });
+    log.appendChild(box);
     scrollDown();
   }
 
@@ -308,6 +548,7 @@
       });
       typing.remove();
       setOnline(true);
+      markUnread();
       const reply = (data.reply || '').trim();
       if (reply) {
         addMessage('assistant', reply);
@@ -316,10 +557,13 @@
       if (data.saved_power && data.saved_power.name) { addMessage('system', 'Saved to the vault: ' + data.saved_power.name); onPowerSaved(); }
       else if (data.duplicate_of && data.duplicate_of.name) addMessage('system', 'The vault already holds: ' + data.duplicate_of.name);
       else if (data.suggested_power && data.suggested_power.name) addPowerCard(data.suggested_power);
+      if (Array.isArray(data.matches) && data.matches.length) addMatches(data.matches.slice(0, 8), data.total_powers);
+      if (typeof data.total_powers === 'number') setCount(data.total_powers);
     } catch (err) {
       typing.remove();
-      setOnline(false);
-      addMessage('system', "Can't reach The Prophet's worker: " + err.message);
+      if (err.status === 429) addMessage('system', 'The Prophet needs a breather. Try again in ' + (err.retryAfter || 60) + ' seconds.');
+      else if (err.status === 400) addMessage('system', err.message);
+      else { setOnline(false); addMessage('system', "Can't reach The Prophet's worker: " + err.message); }
     } finally {
       sendBtn.disabled = false;
       input.focus();
@@ -343,6 +587,43 @@
     input.style.height = '46px';
     input.style.height = Math.min(input.scrollHeight, 140) + 'px';
   });
+
+  // ====== Collapsible chat (mobile only, <=860px) ======
+  const chatEl = document.querySelector('.chat');
+  const chatHead = chatEl.querySelector('.chat-head');
+  const chatNew = document.getElementById('chat-new');
+  const mobileQuery = window.matchMedia('(max-width: 860px)');
+  let chatOpen = true;
+  function setChatOpen(open) {
+    chatOpen = open;
+    const mobile = mobileQuery.matches;
+    chatEl.classList.toggle('collapsed', mobile && !open);
+    if (mobile) chatHead.setAttribute('aria-expanded', String(open));
+    if (open) { chatNew.classList.remove('on'); chatHead.removeAttribute('aria-description'); scrollDown(); }
+  }
+  function applyChatMode() {
+    if (mobileQuery.matches) {
+      chatHead.setAttribute('role', 'button');
+      chatHead.tabIndex = 0;
+      chatHead.setAttribute('aria-controls', 'chat-body');
+      chatHead.setAttribute('aria-label', 'Toggle chat with The Prophet');
+      setChatOpen(chatOpen);
+    } else {   // desktop: always open, no toggle
+      ['role', 'tabindex', 'aria-controls', 'aria-expanded', 'aria-label'].forEach(a => chatHead.removeAttribute(a));
+      chatEl.classList.remove('collapsed');
+      chatNew.classList.remove('on');
+    }
+  }
+  chatHead.addEventListener('click', () => { if (mobileQuery.matches) setChatOpen(!chatOpen); });
+  chatHead.addEventListener('keydown', e => {
+    if (!mobileQuery.matches || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault(); setChatOpen(!chatOpen);
+  });
+  if (mobileQuery.addEventListener) mobileQuery.addEventListener('change', applyChatMode); else mobileQuery.addListener(applyChatMode);
+  applyChatMode();
+  function markUnread() {
+    if (mobileQuery.matches && !chatOpen) { chatNew.classList.add('on'); chatHead.setAttribute('aria-description', 'New message from The Prophet'); }
+  }
 
   // ====== Vault ======
   const PAGE = 24;
@@ -462,6 +743,21 @@
   });
   moreBtn.addEventListener('click', () => { if (vault.cursor && !vault.random) loadVault(true); });
 
+  // Open the vault filtered to one power (from a chat match).
+  function showInVault(name) {
+    const q = String(name).replace(/\s+/g, ' ').trim().slice(0, 60);
+    clearTimeout(searchTimer);
+    vaultSearch.value = q;
+    vault.q = q; vault.random = false; vault.cursor = null;
+    vault.open = true;
+    vaultToggle.setAttribute('aria-expanded', 'true');
+    vaultBody.hidden = false;
+    loadVault();
+    vaultToggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  document.getElementById('add-own').addEventListener('click', () => addPowerCard(null));
+
   // After a power is saved: refresh the count, and the list if it's open.
   function onPowerSaved() {
     loadCount();
@@ -470,7 +766,7 @@
   }
 
   // ====== Boot ======
-  addMessage('assistant', "I am The Prophet. Tell me what kind of power you've always wanted, and we'll forge it together. When it's ready, you can save it to the vault.");
+  addMessage('assistant', "I am The Prophet. Tell me what kind of power you've always wanted, and we'll forge it together. When it's ready, edit it and save it to the vault. Ask me what's already in the vault, or add your own power.");
   loadCount();
 </script>
 </body>

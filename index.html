@@ -626,7 +626,8 @@
   }
 
   // ====== Vault ======
-  const PAGE = 24;
+  const PAGE = 3;            // powers per view (list, search, shuffle)
+  const SHUFFLE_POOL = 9;    // random fetch size; we pick PAGE from it, avoiding the last shuffle's powers
   const vaultToggle = document.getElementById('vault-toggle');
   const vaultBody = document.getElementById('vault-body');
   const vaultCount = document.getElementById('vault-count');
@@ -634,7 +635,7 @@
   const vaultStatus = document.getElementById('vault-status');
   const vaultSearch = document.getElementById('vault-search');
   const moreBtn = document.getElementById('vault-more');
-  const vault = { open: false, loaded: false, q: '', random: false, cursor: null, shown: 0, total: null, req: 0 };
+  const vault = { open: false, loaded: false, q: '', random: true, cursor: null, shown: 0, total: null, req: 0, lastIds: [] };
 
   function setCount(n) {
     if (typeof n === 'number') vault.total = n;
@@ -674,7 +675,7 @@
   // append=false starts a fresh list (search / shuffle / refresh); append=true = LOAD MORE.
   async function loadVault(append = false) {
     const id = ++vault.req;
-    const params = new URLSearchParams({ limit: String(PAGE) });
+    const params = new URLSearchParams({ limit: String(vault.random ? SHUFFLE_POOL : PAGE) });
     if (vault.q) params.set('q', vault.q);
     if (vault.random) params.set('random', '1');
     else if (append && vault.cursor) params.set('cursor', String(vault.cursor));
@@ -685,7 +686,16 @@
       if (id !== vault.req) return; // a newer request won
       vault.loaded = true;
       if (!append) { vaultGrid.textContent = ''; vault.shown = 0; }
-      const powers = data.powers || [];
+      let powers = data.powers || [];
+      if (vault.random) {
+        // Prefer powers not shown in the previous shuffle, so SHUFFLE never repeats the same set when it can avoid it.
+        const prev = new Set(vault.lastIds);
+        const fresh = powers.filter(p => !prev.has(p.id));
+        powers = fresh.concat(powers.filter(p => prev.has(p.id))).slice(0, PAGE);
+        vault.lastIds = powers.map(p => p.id);
+      } else {
+        vault.lastIds = [];
+      }
       powers.forEach(renderPower);
       vault.shown += powers.length;
       vault.cursor = data.next_cursor || null;
@@ -695,11 +705,16 @@
         emptyNote(vault.q ? 'The Prophet knows no such power. Yet.' : 'The vault is empty. Forge your first power above.');
         vaultStatus.textContent = vault.q ? 'No matches for "' + vault.q + '"' : '';
       } else if (vault.random) {
-        vaultStatus.textContent = 'Shuffled ' + vault.shown + ' of ' + total + (vault.q ? ' matching "' + vault.q + '"' : '');
+        vaultStatus.textContent = vault.q
+          ? 'Showing ' + vault.shown + ' random of ' + total + (total === 1 ? ' match' : ' matches') + ' for "' + vault.q + '"'
+          : 'Showing ' + vault.shown + ' random ' + (vault.shown === 1 ? 'power' : 'powers') + ' of ' + total;
+      } else if (vault.q) {
+        vaultStatus.textContent = 'Showing ' + vault.shown + ' of ' + total + (total === 1 ? ' match' : ' matches') + ' for "' + vault.q + '"';
       } else {
-        vaultStatus.textContent = 'Showing ' + vault.shown + ' of ' + total + (vault.q ? ' matching "' + vault.q + '"' : '');
+        vaultStatus.textContent = 'Showing ' + vault.shown + ' newest of ' + total;
       }
-      moreBtn.hidden = !vault.cursor;
+      // Shuffle mode: no LOAD MORE (press SHUFFLE for another 3).
+      moreBtn.hidden = vault.random || !vault.cursor;
     } catch (err) {
       if (id !== vault.req) return;
       if (!append) { vaultGrid.textContent = ''; vault.shown = 0; moreBtn.hidden = true; }
@@ -724,8 +739,9 @@
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
       const q = vaultSearch.value.replace(/\s+/g, ' ').trim().slice(0, 60);
-      if (q === vault.q && !vault.random) return;
-      vault.q = q; vault.random = false; vault.cursor = null;
+      const random = !q; // empty search box = back to shuffle
+      if (q === vault.q && random === vault.random) return;
+      vault.q = q; vault.random = random; vault.cursor = null;
       loadVault();
     }, 300);
   });
@@ -738,7 +754,7 @@
   document.getElementById('refresh-vault').addEventListener('click', () => {
     clearTimeout(searchTimer);
     vaultSearch.value = '';
-    vault.q = ''; vault.random = false; vault.cursor = null;
+    vault.q = ''; vault.random = true; vault.cursor = null; // REFRESH = clear search + fresh shuffle
     loadVault();
   });
   moreBtn.addEventListener('click', () => { if (vault.cursor && !vault.random) loadVault(true); });

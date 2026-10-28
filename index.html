@@ -605,6 +605,61 @@
     input.style.height = Math.min(input.scrollHeight, 140) + 'px';
   });
 
+  // ====== Mobile keyboard: keep the Prophet chat input right above the on-screen keyboard ======
+  // Only the chat textarea, only on touch phones/tablets (narrow + coarse pointer). Desktop, the vault
+  // search and the power cards are untouched. Uses visualViewport (the area NOT covered by the
+  // keyboard) so it works on iOS Safari (layout viewport stays tall) and Android Chrome alike.
+  // Nothing happens on blur, so closing the keyboard never forces a jump.
+  const kbNarrow = window.matchMedia ? window.matchMedia('(max-width:860px)') : null;
+  const kbCoarse = window.matchMedia ? window.matchMedia('(pointer:coarse)') : null;
+  function isMobileChat() {
+    if (!kbNarrow || !kbNarrow.matches) return false;
+    return (navigator.maxTouchPoints || 0) > 0 || (kbCoarse && kbCoarse.matches) || 'ontouchstart' in window;
+  }
+  let kbTimers = [];
+  function revealChatInput() {
+    if (document.activeElement !== input || activeTab !== 'prophet' || !isMobileChat()) return;
+    const vv = window.visualViewport;
+    const visTop = vv ? vv.offsetTop : 0;
+    const visBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+    const r = form.getBoundingClientRect();
+    const gap = 8;                                   // breathing room above the keyboard
+    let dy = r.bottom - (visBottom - gap);           // >0: input row is under the keyboard
+    if (dy <= 0 && r.top >= visTop) return;          // already fully visible
+    if (r.top - dy < visTop) dy = r.top - visTop;    // row taller than the visible area: show its top
+    if (Math.abs(dy) < 2) return;
+    // If the page can't scroll that far (keyboard taller than the space below the box), add a
+    // temporary spacer under the page while the chat input is focused; removed on blur.
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    const short = Math.ceil(window.scrollY + dy - maxScroll);
+    if (dy > 0 && short > 0) {
+      kbSpacer.style.height = (parseFloat(kbSpacer.style.height) || 0) + short + 'px';
+      kbSpacer.hidden = false;
+    }
+    const smooth = !(motionQuery && motionQuery.matches);
+    window.scrollBy({ top: dy, left: 0, behavior: smooth ? 'smooth' : 'auto' });
+  }
+  const kbSpacer = document.createElement('div');
+  kbSpacer.setAttribute('aria-hidden', 'true');
+  kbSpacer.hidden = true;
+  document.body.appendChild(kbSpacer);
+  function clearKbSpacer() { kbSpacer.hidden = true; kbSpacer.style.height = ''; }
+  function scheduleReveal() {
+    kbTimers.forEach(clearTimeout);
+    // the keyboard animates in over ~250-300ms; check again as it settles
+    kbTimers = [80, 320, 650].map(ms => setTimeout(revealChatInput, ms));
+  }
+  input.addEventListener('focus', () => { if (isMobileChat()) scheduleReveal(); });
+  input.addEventListener('blur', () => { kbTimers.forEach(clearTimeout); kbTimers = []; clearKbSpacer(); });
+  if (window.visualViewport) {
+    let vvQueued = false;
+    window.visualViewport.addEventListener('resize', () => {
+      if (document.activeElement !== input || vvQueued) return;
+      vvQueued = true;
+      requestAnimationFrame(() => { vvQueued = false; revealChatInput(); });
+    });
+  }
+
   // ====== One box, two panels: pill toggle (WAI-ARIA tabs, automatic activation) ======
   // Panels are only hidden/shown, never rebuilt, so chat history, typed text, cards and the vault's
   // search/shuffle all survive a flip. Scroll positions are saved and restored explicitly.

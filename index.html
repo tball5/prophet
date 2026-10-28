@@ -99,8 +99,26 @@
 
   /* ---------- Vault ---------- */
   .vault{grid-column:1/-1;background:var(--panel);border:1px solid var(--green-soft);border-radius:14px;padding:18px;backdrop-filter:blur(6px)}
-  .vault-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-  .vault-head h2{font-family:'Orbitron',sans-serif;font-size:16px;letter-spacing:.15em;color:var(--green)}
+  .vault-toggle{
+    width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:transparent;color:var(--green);border:none;box-shadow:none;padding:4px 2px;min-height:44px;
+    font-family:'Orbitron',sans-serif;font-size:16px;letter-spacing:.15em;text-align:left;border-radius:8px;
+  }
+  .vault-toggle:hover{box-shadow:none;text-shadow:0 0 12px var(--green)}
+  .vault-toggle:focus-visible{outline:2px solid var(--green);outline-offset:4px}
+  .vault-toggle .arrow{display:inline-block;transition:transform .2s;font-size:18px}
+  .vault-toggle[aria-expanded="true"] .arrow{transform:rotate(180deg)}
+  .vault-body{margin-top:14px}
+  .vault-body[hidden]{display:none}
+  .vault-tools{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+  .vault-tools input{
+    flex:1 1 220px;min-width:0;min-height:40px;padding:0 14px;border-radius:10px;
+    background:rgba(0,0,0,.55);color:var(--text);border:1px solid var(--green-soft);font:inherit;font-size:15px;outline:none;
+  }
+  .vault-tools input:focus{border-color:var(--green);box-shadow:0 0 12px var(--green-soft)}
+  .vault-status{color:var(--muted);font-size:13px;margin-bottom:10px;min-height:1em}
+  .vault-more{display:flex;justify-content:center;margin-top:14px}
+  .vault-more button[hidden]{display:none}
   .vault-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
   .vault-item{border:1px solid var(--green-faint);border-radius:10px;padding:12px;background:rgba(0,0,0,.4)}
   .vault-item h4{color:var(--green);font-size:15px;margin-bottom:6px}
@@ -112,6 +130,8 @@
     .wrap{grid-template-columns:1fr;gap:24px;padding:24px 16px}
     .hero-frame{width:min(60vw,260px)}
     .chat{height:70vh}
+    .vault-toggle{font-size:14px}
+    .vault-tools button{flex:1 1 auto}
   }
 </style>
 </head>
@@ -142,11 +162,20 @@
   </section>
 
   <section class="vault" aria-label="Saved superpowers">
-    <div class="vault-head">
-      <h2>POWER VAULT</h2>
-      <button class="ghost" id="refresh-vault" type="button">REFRESH</button>
+    <button class="vault-toggle" id="vault-toggle" type="button" aria-expanded="false" aria-controls="vault-body">
+      <span>POWER VAULT <span id="vault-count"></span></span>
+      <span class="arrow" aria-hidden="true">▾</span>
+    </button>
+    <div class="vault-body" id="vault-body" hidden>
+      <div class="vault-tools">
+        <input type="search" id="vault-search" placeholder="Search the vault..." maxlength="60" aria-label="Search powers" autocomplete="off">
+        <button class="ghost" id="shuffle-vault" type="button">SHUFFLE</button>
+        <button class="ghost" id="refresh-vault" type="button">REFRESH</button>
+      </div>
+      <div class="vault-status" id="vault-status" aria-live="polite"></div>
+      <div class="vault-grid" id="vault-grid"></div>
+      <div class="vault-more"><button class="ghost" id="vault-more" type="button" hidden>LOAD MORE</button></div>
     </div>
-    <div class="vault-grid" id="vault-grid"><p class="empty">Loading saved powers...</p></div>
   </section>
 </main>
 
@@ -250,7 +279,7 @@
       try {
         await api('/api/powers', { method: 'POST', body: JSON.stringify({ name: power.name, description: power.description }) });
         btn.textContent = 'SAVED ✓';
-        loadVault();
+        onPowerSaved();
       } catch (err) {
         btn.disabled = false;
         btn.textContent = 'RETRY SAVE';
@@ -284,7 +313,7 @@
         addMessage('assistant', reply);
         history.push({ role: 'assistant', content: reply });
       }
-      if (data.saved_power && data.saved_power.name) { addMessage('system', 'Saved to the vault: ' + data.saved_power.name); loadVault(); }
+      if (data.saved_power && data.saved_power.name) { addMessage('system', 'Saved to the vault: ' + data.saved_power.name); onPowerSaved(); }
       else if (data.duplicate_of && data.duplicate_of.name) addMessage('system', 'The vault already holds: ' + data.duplicate_of.name);
       else if (data.suggested_power && data.suggested_power.name) addPowerCard(data.suggested_power);
     } catch (err) {
@@ -316,44 +345,133 @@
   });
 
   // ====== Vault ======
+  const PAGE = 24;
+  const vaultToggle = document.getElementById('vault-toggle');
+  const vaultBody = document.getElementById('vault-body');
+  const vaultCount = document.getElementById('vault-count');
   const vaultGrid = document.getElementById('vault-grid');
+  const vaultStatus = document.getElementById('vault-status');
+  const vaultSearch = document.getElementById('vault-search');
+  const moreBtn = document.getElementById('vault-more');
+  const vault = { open: false, loaded: false, q: '', random: false, cursor: null, shown: 0, total: null, req: 0 };
 
-  async function loadVault() {
+  function setCount(n) {
+    if (typeof n === 'number') vault.total = n;
+    vaultCount.textContent = typeof vault.total === 'number' ? '(' + vault.total + ')' : '';
+  }
+
+  function emptyNote(text) {
+    const p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = text;
+    vaultGrid.appendChild(p);
+  }
+
+  function renderPower(p) {
+    const item = document.createElement('div');
+    item.className = 'vault-item';
+    const h4 = document.createElement('h4');
+    h4.textContent = p.name;
+    const desc = document.createElement('p');
+    desc.textContent = p.description;
+    item.append(h4, desc);
+    const metaText = [p.level ? 'LVL ' + p.level : '', p.weakness ? 'Weak: ' + p.weakness : ''].filter(Boolean).join('  ·  ');
+    if (metaText) {
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = metaText;
+      item.appendChild(meta);
+    }
+    vaultGrid.appendChild(item);
+  }
+
+  // Header count only (cheap): limit=1, no search.
+  async function loadCount() {
+    try { const data = await api('/api/powers?limit=1'); setCount(data.total); } catch (_) { /* header just stays blank */ }
+  }
+
+  // append=false starts a fresh list (search / shuffle / refresh); append=true = LOAD MORE.
+  async function loadVault(append = false) {
+    const id = ++vault.req;
+    const params = new URLSearchParams({ limit: String(PAGE) });
+    if (vault.q) params.set('q', vault.q);
+    if (vault.random) params.set('random', '1');
+    else if (append && vault.cursor) params.set('cursor', String(vault.cursor));
+    moreBtn.disabled = true;
+    if (!append) vaultStatus.textContent = 'Consulting the vault...';
     try {
-      const data = await api('/api/powers');
-      vaultGrid.innerHTML = '';
+      const data = await api('/api/powers?' + params.toString());
+      if (id !== vault.req) return; // a newer request won
+      vault.loaded = true;
+      if (!append) { vaultGrid.textContent = ''; vault.shown = 0; }
       const powers = data.powers || [];
-      if (!powers.length) {
-        vaultGrid.innerHTML = '<p class="empty">The vault is empty. Forge your first power above.</p>';
-        return;
+      powers.forEach(renderPower);
+      vault.shown += powers.length;
+      vault.cursor = data.next_cursor || null;
+      const total = typeof data.total === 'number' ? data.total : vault.shown;
+      if (!vault.q) setCount(total);
+      if (!vault.shown) {
+        emptyNote(vault.q ? 'The Prophet knows no such power. Yet.' : 'The vault is empty. Forge your first power above.');
+        vaultStatus.textContent = vault.q ? 'No matches for "' + vault.q + '"' : '';
+      } else if (vault.random) {
+        vaultStatus.textContent = 'Shuffled ' + vault.shown + ' of ' + total + (vault.q ? ' matching "' + vault.q + '"' : '');
+      } else {
+        vaultStatus.textContent = 'Showing ' + vault.shown + ' of ' + total + (vault.q ? ' matching "' + vault.q + '"' : '');
       }
-      for (const p of powers) {
-        const item = document.createElement('div');
-        item.className = 'vault-item';
-        const h4 = document.createElement('h4');
-        h4.textContent = p.name;
-        const desc = document.createElement('p');
-        desc.textContent = p.description;
-        const meta = document.createElement('div');
-        meta.className = 'meta';
-        meta.textContent = [p.level ? 'LVL ' + p.level : '', p.weakness ? 'Weak: ' + p.weakness : ''].filter(Boolean).join('  ·  ');
-        item.append(h4, desc, meta);
-        vaultGrid.appendChild(item);
-      }
+      moreBtn.hidden = !vault.cursor;
     } catch (err) {
-      vaultGrid.innerHTML = '';
-      const p = document.createElement('p');
-      p.className = 'empty';
-      p.textContent = 'Vault offline: ' + err.message;
-      vaultGrid.appendChild(p);
+      if (id !== vault.req) return;
+      if (!append) { vaultGrid.textContent = ''; vault.shown = 0; moreBtn.hidden = true; }
+      vaultStatus.textContent = '';
+      emptyNote('Vault offline: ' + err.message);
+    } finally {
+      if (id === vault.req) moreBtn.disabled = false;
     }
   }
 
-  document.getElementById('refresh-vault').addEventListener('click', loadVault);
+  function setVaultOpen(open) {
+    vault.open = open;
+    vaultToggle.setAttribute('aria-expanded', String(open));
+    vaultBody.hidden = !open;
+    if (open && !vault.loaded) loadVault();
+  }
+
+  vaultToggle.addEventListener('click', () => setVaultOpen(!vault.open));
+
+  let searchTimer = null;
+  vaultSearch.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      const q = vaultSearch.value.replace(/\s+/g, ' ').trim().slice(0, 60);
+      if (q === vault.q && !vault.random) return;
+      vault.q = q; vault.random = false; vault.cursor = null;
+      loadVault();
+    }, 300);
+  });
+  vaultSearch.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+
+  document.getElementById('shuffle-vault').addEventListener('click', () => {
+    vault.random = true; vault.cursor = null;
+    loadVault();
+  });
+  document.getElementById('refresh-vault').addEventListener('click', () => {
+    clearTimeout(searchTimer);
+    vaultSearch.value = '';
+    vault.q = ''; vault.random = false; vault.cursor = null;
+    loadVault();
+  });
+  moreBtn.addEventListener('click', () => { if (vault.cursor && !vault.random) loadVault(true); });
+
+  // After a power is saved: refresh the count, and the list if it's open.
+  function onPowerSaved() {
+    loadCount();
+    if (vault.open) { vault.random = false; vault.cursor = null; loadVault(); }
+    else vault.loaded = false;
+  }
 
   // ====== Boot ======
   addMessage('assistant', "I am The Prophet. Tell me what kind of power you've always wanted, and we'll forge it together. When it's ready, you can save it to the vault.");
-  loadVault();
+  loadCount();
 </script>
 </body>
 </html>

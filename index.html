@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Prophet · Superpower Creator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#e8c25a;
+    --green-soft:rgba(232,194,90,.38);
+    --green-faint:rgba(232,194,90,.14);
+    --bg:#0a0a0a;
+    --panel:rgba(18,14,6,.8);
+    --text:#f3e9d2;
+    --muted:#b39b63;
+    --danger:#ff4d6d;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{min-height:100%}
+  body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;overflow-x:hidden}
+  #rain-canvas{position:fixed;inset:0;z-index:0;display:block}
+
+  .wrap{
+    position:relative;z-index:1;min-height:100vh;
+    max-width:1200px;margin:0 auto;padding:32px 24px;
+    display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,560px);
+    gap:40px;align-items:center;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero{text-align:center}
+  .hero-frame{position:relative;display:inline-block;width:min(100%,420px)}
+  .hero-frame img{width:100%;height:auto;display:block}
+  .hero-fallback{display:none;align-items:center;justify-content:center;aspect-ratio:1/1;
+    font-family:'Orbitron',sans-serif;font-size:64px;color:var(--green);text-shadow:0 0 20px var(--green)}
+  .hero h1{
+    margin-top:24px;font-family:'Orbitron',sans-serif;font-weight:900;
+    font-size:clamp(22px,3.4vw,38px);letter-spacing:.08em;white-space:nowrap;color:var(--green);
+    background:linear-gradient(180deg,#fff3c4 0%,#e8c25a 45%,#a8761e 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 14px rgba(232,194,90,.45));
+  }
+  .hero p{color:var(--muted);letter-spacing:.3em;text-transform:uppercase;font-size:14px;margin-top:6px}
+
+  /* ---------- Chat ---------- */
+  .chat{
+    background:var(--panel);border:1px solid var(--green-soft);border-radius:14px;
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    box-shadow:0 0 30px var(--green-faint),inset 0 0 30px var(--green-faint);
+    display:flex;flex-direction:column;height:min(78vh,680px);overflow:hidden;
+  }
+  .chat-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--green-faint)}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
+  .dot.off{background:var(--danger);box-shadow:0 0 10px var(--danger)}
+  .chat-head strong{font-family:'Orbitron',sans-serif;letter-spacing:.1em;font-size:14px}
+  .chat-head span{margin-left:auto;color:var(--muted);font-size:12px}
+
+  .log{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--green-soft) transparent}
+  .msg{max-width:85%;padding:10px 14px;border-radius:10px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;font-size:15px}
+  .msg.assistant{align-self:flex-start;background:rgba(232,194,90,.08);border:1px solid var(--green-faint)}
+  .msg.assistant::before{content:'PROPHET › ';color:var(--green)}
+  .msg.user{align-self:flex-end;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+  .msg.system{align-self:center;color:var(--danger);font-size:13px;border:1px dashed rgba(255,77,109,.4)}
+
+  .power-card{
+    align-self:stretch;border:1px solid var(--green);border-radius:12px;padding:14px 16px;
+    background:linear-gradient(135deg,rgba(232,194,90,.14),rgba(0,0,0,.45));
+    box-shadow:0 0 18px var(--green-faint);
+  }
+  .power-card .label{font-size:11px;letter-spacing:.3em;color:var(--muted)}
+  .power-card h3{font-family:'Orbitron',sans-serif;color:var(--green);margin:4px 0 8px;font-size:18px}
+  .power-card p{font-size:14px;line-height:1.5;margin-bottom:6px}
+  .power-card .meta{color:var(--muted);font-size:13px}
+  .power-card button{margin-top:10px}
+
+  .typing{align-self:flex-start;color:var(--muted);font-size:14px}
+  .typing::after{content:'▋';animation:blink 1s steps(1) infinite;margin-left:4px;color:var(--green)}
+  @keyframes blink{50%{opacity:0}}
+
+  form.input{display:flex;gap:10px;padding:14px;border-top:1px solid var(--green-faint)}
+  form.input textarea{
+    flex:1;resize:none;height:46px;max-height:140px;padding:12px 14px;border-radius:10px;
+    background:rgba(0,0,0,.55);color:var(--text);border:1px solid var(--green-soft);
+    font:inherit;font-size:15px;outline:none;
+  }
+  form.input textarea:focus{border-color:var(--green);box-shadow:0 0 12px var(--green-soft)}
+  button{
+    font-family:'Orbitron',sans-serif;font-size:12px;letter-spacing:.12em;cursor:pointer;
+    background:linear-gradient(180deg,#f5d77e,#c99a35);color:#1a1203;border:none;border-radius:10px;padding:0 18px;min-height:40px;
+    box-shadow:0 0 14px var(--green-soft);transition:transform .1s,box-shadow .2s;
+  }
+  button:hover{box-shadow:0 0 24px var(--green)}
+  button:active{transform:scale(.97)}
+  button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+  button.ghost{background:transparent;color:var(--green);border:1px solid var(--green)}
+
+  /* ---------- Vault ---------- */
+  .vault{grid-column:1/-1;background:var(--panel);border:1px solid var(--green-soft);border-radius:14px;padding:18px;backdrop-filter:blur(6px)}
+  .vault-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .vault-head h2{font-family:'Orbitron',sans-serif;font-size:16px;letter-spacing:.15em;color:var(--green)}
+  .vault-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+  .vault-item{border:1px solid var(--green-faint);border-radius:10px;padding:12px;background:rgba(0,0,0,.4)}
+  .vault-item h4{color:var(--green);font-size:15px;margin-bottom:6px}
+  .vault-item p{font-size:13px;color:var(--text);opacity:.85;line-height:1.45}
+  .vault-item .meta{font-size:12px;color:var(--muted);margin-top:6px}
+  .empty{color:var(--muted);font-size:14px}
+
+  @media (max-width:860px){
+    .wrap{grid-template-columns:1fr;gap:24px;padding:24px 16px}
+    .hero-frame{width:min(60vw,260px)}
+    .chat{height:70vh}
+  }
+</style>
+</head>
+<body>
+<canvas id="rain-canvas"></canvas>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="hero-frame">
+      <img src="xach.png" alt="The Prophet" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="hero-fallback">P</div>
+    </div>
+    <h1>THE PROPHET</h1>
+    <p>Superpower Creator</p>
+  </section>
+
+  <section class="chat" aria-label="Chat with The Prophet">
+    <header class="chat-head">
+      <div class="dot" id="status-dot"></div>
+      <strong>THE PROPHET // ONLINE</strong>
+      <span id="status-text">secure channel</span>
+    </header>
+    <div class="log" id="log" aria-live="polite"></div>
+    <form class="input" id="chat-form">
+      <textarea id="chat-input" placeholder="Describe the power you want..." rows="1" maxlength="2000"></textarea>
+      <button type="submit" id="send-btn">SEND</button>
+    </form>
+  </section>
+
+  <section class="vault" aria-label="Saved superpowers">
+    <div class="vault-head">
+      <h2>POWER VAULT</h2>
+      <button class="ghost" id="refresh-vault" type="button">REFRESH</button>
+    </div>
+    <div class="vault-grid" id="vault-grid"><p class="empty">Loading saved powers...</p></div>
+  </section>
+</main>
+
+<script>
+  // ====== CONFIG: point this at your Cloudflare Worker ======
+  const API_BASE = 'https://prophet-worker.YOUR-SUBDOMAIN.workers.dev';
+
+  // Matrix Rain
+  const rainCanvas = document.getElementById('rain-canvas');
+  const ctx = rainCanvas.getContext('2d');
+  rainCanvas.width = window.innerWidth;
+  rainCanvas.height = window.innerHeight;
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()_+-=[]{}|;:\'",.<>?/～!！@#￥%……&*（）——+【】｛｝；：＂＇，。、《》？';
+  const fontSize = 14;
+  let columns = rainCanvas.width / fontSize;
+  let drops = Array(Math.floor(columns)).fill(1);
+
+  function drawRain() {
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(10, 10, 10, 0.08)';
+    ctx.fillRect(0, 0, rainCanvas.width, rainCanvas.height);
+    ctx.fillStyle = '#00ff88';           // green characters
+    ctx.shadowColor = '#1e90ff';         // bluish glow
+    ctx.shadowBlur = 18;
+    ctx.font = fontSize + 'px monospace';
+    for (let i = 0; i < drops.length; i++) {
+      const text = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+      if (drops[i] * fontSize > rainCanvas.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
+    }
+  }
+
+  drawRain();
+  setInterval(drawRain, 110); // higher = slower rain
+
+  window.addEventListener('resize', () => {
+    rainCanvas.width = window.innerWidth;
+    rainCanvas.height = window.innerHeight;
+    columns = rainCanvas.width / fontSize;
+    drops = Array(Math.floor(columns)).fill(1);
+  });
+
+  // ====== Chat ======
+  const log = document.getElementById('log');
+  const form = document.getElementById('chat-form');
+  const input = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('send-btn');
+  const statusDot = document.getElementById('status-dot');
+  const statusText = document.getElementById('status-text');
+  const history = []; // {role:'user'|'assistant', content}
+
+  async function api(path, options = {}) {
+    const res = await fetch(API_BASE + path, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    return data;
+  }
+
+  function setOnline(ok) {
+    statusDot.classList.toggle('off', !ok);
+    statusText.textContent = ok ? 'secure channel' : 'signal lost';
+  }
+
+  function scrollDown() { log.scrollTop = log.scrollHeight; }
+
+  function addMessage(role, text) {
+    const el = document.createElement('div');
+    el.className = 'msg ' + role;
+    el.textContent = text;
+    log.appendChild(el);
+    scrollDown();
+    return el;
+  }
+
+  function addPowerCard(power) {
+    const card = document.createElement('div');
+    card.className = 'power-card';
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = 'NEW SUPERPOWER FORGED';
+    const h3 = document.createElement('h3');
+    h3.textContent = power.name;
+    const p = document.createElement('p');
+    p.textContent = power.description;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = [
+      power.weakness ? 'Weakness: ' + power.weakness : '',
+      power.level ? 'Power level: ' + power.level + '/10' : ''
+    ].filter(Boolean).join('  ·  ');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'SAVE TO VAULT';
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = 'SAVING...';
+      try {
+        await api('/api/powers', { method: 'POST', body: JSON.stringify(power) });
+        btn.textContent = 'SAVED ✓';
+        loadVault();
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'RETRY SAVE';
+        addMessage('system', 'Could not save: ' + err.message);
+      }
+    });
+    card.append(label, h3, p, meta, btn);
+    log.appendChild(card);
+    scrollDown();
+  }
+
+  async function send(text) {
+    addMessage('user', text);
+    history.push({ role: 'user', content: text });
+    sendBtn.disabled = true;
+    const typing = document.createElement('div');
+    typing.className = 'typing';
+    typing.textContent = 'The Prophet is channeling';
+    log.appendChild(typing);
+    scrollDown();
+
+    try {
+      const data = await api('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify({ messages: history.slice(-12) })
+      });
+      typing.remove();
+      setOnline(true);
+      const reply = (data.reply || '').trim();
+      if (reply) {
+        addMessage('assistant', reply);
+        history.push({ role: 'assistant', content: reply });
+      }
+      if (data.power && data.power.name) addPowerCard(data.power);
+    } catch (err) {
+      typing.remove();
+      setOnline(false);
+      addMessage('system', "Can't reach The Prophet's worker: " + err.message);
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text || sendBtn.disabled) return;
+    input.value = '';
+    input.style.height = '46px';
+    send(text);
+  });
+
+  // Enter sends, Shift+Enter = newline; textarea grows with content
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+  });
+  input.addEventListener('input', () => {
+    input.style.height = '46px';
+    input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+  });
+
+  // ====== Vault ======
+  const vaultGrid = document.getElementById('vault-grid');
+
+  async function loadVault() {
+    try {
+      const data = await api('/api/powers');
+      vaultGrid.innerHTML = '';
+      const powers = data.powers || [];
+      if (!powers.length) {
+        vaultGrid.innerHTML = '<p class="empty">The vault is empty. Forge your first power above.</p>';
+        return;
+      }
+      for (const p of powers) {
+        const item = document.createElement('div');
+        item.className = 'vault-item';
+        const h4 = document.createElement('h4');
+        h4.textContent = p.name;
+        const desc = document.createElement('p');
+        desc.textContent = p.description;
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.textContent = [p.level ? 'LVL ' + p.level : '', p.weakness ? 'Weak: ' + p.weakness : ''].filter(Boolean).join('  ·  ');
+        item.append(h4, desc, meta);
+        vaultGrid.appendChild(item);
+      }
+    } catch (err) {
+      vaultGrid.innerHTML = '';
+      const p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = 'Vault offline: ' + err.message;
+      vaultGrid.appendChild(p);
+    }
+  }
+
+  document.getElementById('refresh-vault').addEventListener('click', loadVault);
+
+  // ====== Boot ======
+  addMessage('assistant', "I am The Prophet. Tell me what kind of power you've always wanted, and we'll forge it together. When it's ready, you can save it to the vault.");
+  loadVault();
+</script>
+</body>
+</html>

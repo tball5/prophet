@@ -121,7 +121,7 @@
 <main class="wrap">
   <section class="hero">
     <div class="hero-frame">
-      <img src="xach.png" alt="The Prophet" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <img src="prophet.png" alt="The Prophet" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
       <div class="hero-fallback">P</div>
     </div>
     <h1>THE PROPHET</h1>
@@ -152,7 +152,7 @@
 
 <script>
   // ====== CONFIG: point this at your Cloudflare Worker ======
-  const API_BASE = 'https://prophet-worker.YOUR-SUBDOMAIN.workers.dev';
+  const API_BASE = 'https://prophet-api.prophetapi.workers.dev';
 
   // Matrix Rain
   const rainCanvas = document.getElementById('rain-canvas');
@@ -205,7 +205,7 @@
       headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    if (!res.ok) throw new Error((data.error && data.error.message) || (typeof data.error === 'string' ? data.error : '') || `Request failed (${res.status})`);
     return data;
   }
 
@@ -248,7 +248,7 @@
       btn.disabled = true;
       btn.textContent = 'SAVING...';
       try {
-        await api('/api/powers', { method: 'POST', body: JSON.stringify(power) });
+        await api('/api/powers', { method: 'POST', body: JSON.stringify({ name: power.name, description: power.description }) });
         btn.textContent = 'SAVED ✓';
         loadVault();
       } catch (err) {
@@ -275,7 +275,7 @@
     try {
       const data = await api('/api/chat', {
         method: 'POST',
-        body: JSON.stringify({ messages: history.slice(-12) })
+        body: JSON.stringify({ message: text, history: history.slice(0, -1).slice(-10) })
       });
       typing.remove();
       setOnline(true);
@@ -284,7 +284,9 @@
         addMessage('assistant', reply);
         history.push({ role: 'assistant', content: reply });
       }
-      if (data.power && data.power.name) addPowerCard(data.power);
+      if (data.saved_power && data.saved_power.name) { addMessage('system', 'Saved to the vault: ' + data.saved_power.name); loadVault(); }
+      else if (data.duplicate_of && data.duplicate_of.name) addMessage('system', 'The vault already holds: ' + data.duplicate_of.name);
+      else if (data.suggested_power && data.suggested_power.name) addPowerCard(data.suggested_power);
     } catch (err) {
       typing.remove();
       setOnline(false);

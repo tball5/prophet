@@ -29,7 +29,7 @@
     position:relative;z-index:1;min-height:100vh;min-height:100svh;
     max-width:1200px;margin:0 auto;padding:32px 24px;
     padding:max(32px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(32px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));
-    display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,560px);
+    display:grid;grid-template-columns:minmax(240px,1fr) minmax(320px,700px);
     gap:40px;align-items:center;
   }
 
@@ -48,30 +48,44 @@
   }
   .hero p{color:var(--muted);letter-spacing:.3em;text-transform:uppercase;font-size:14px;margin-top:6px}
 
-  /* ---------- Chat ---------- */
-  .chat{
+  /* ---------- One box: Prophet chat + Power Vault behind a pill toggle ---------- */
+  .box{
     background:var(--panel);border:1px solid var(--green-soft);border-radius:14px;
     backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
     box-shadow:0 0 30px var(--green-faint),inset 0 0 30px var(--green-faint);
-    display:flex;flex-direction:column;height:min(78vh,680px);overflow:hidden;
+    display:flex;flex-direction:column;height:min(78vh,680px);overflow:hidden;min-width:0;
   }
-  .chat-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--green-faint)}
-  .dot{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
+  .box-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--green-faint)}
+  .dot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
   .dot.off{background:var(--danger);box-shadow:0 0 10px var(--danger)}
-  .chat-head strong{font-family:'Orbitron',sans-serif;letter-spacing:.1em;font-size:14px}
-  .chat-head span{margin-left:auto;color:var(--muted);font-size:12px}
-  .chat-body{flex:1;min-height:0;display:flex;flex-direction:column}
-  /* Toggle chevrons: CSS-drawn (no font glyph), centered in a fixed square so a 180deg turn flips it in place.
-     pointer-events:none -> taps on the arrow always land on the toggle itself. Down = closed, up = open. */
-  .chev{flex:none;display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--green-soft);border-radius:50%;
-    color:var(--green);pointer-events:none;transform:rotate(0deg);transition:transform .25s ease,border-color .2s,box-shadow .2s}
-  .chev::before{content:"";width:9px;height:9px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg)}
-  @media (prefers-reduced-motion:reduce){.chev{transition:none}}
-  .chat-arrow{display:none}
-  .chat-new{display:none;font-size:10px;letter-spacing:.15em;color:#1a1203;background:var(--green);border-radius:6px;padding:2px 6px;box-shadow:0 0 10px var(--green);animation:blink 1.4s steps(1) infinite}
-  .chat-new.on{display:inline-block}
+  .status{margin-left:auto;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;white-space:nowrap}
 
-  .log{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--green-soft) transparent}
+  /* Pill toggle (role=tablist). Selected half is filled gold. */
+  .tabs{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--green-soft);border-radius:999px;background:rgba(0,0,0,.55);box-shadow:inset 0 0 12px var(--green-faint)}
+  .tab{
+    position:relative;display:inline-flex;align-items:center;gap:8px;
+    background:transparent;color:var(--green);box-shadow:none;border-radius:999px;
+    min-height:38px;padding:0 18px;font-size:12px;letter-spacing:.14em;
+    transition:background .2s,color .2s,box-shadow .2s;-webkit-tap-highlight-color:transparent;
+  }
+  .tab:hover{box-shadow:none;text-shadow:0 0 10px var(--green)}
+  .tab:active{transform:none}
+  .tab[aria-selected="true"]{background:linear-gradient(180deg,#f5d77e,#c99a35);color:#1a1203;box-shadow:0 0 14px var(--green-soft);text-shadow:none}
+  .tab:focus{outline:none}
+  .tab:focus-visible{outline:2px solid #fff3c4;outline-offset:2px}
+  .tab .tab-count{font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:0;opacity:.8}
+  .tab .tab-count:empty{display:none}
+  .chat-new{display:none;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.12em;color:#1a1203;background:var(--green);border-radius:6px;padding:1px 5px;box-shadow:0 0 10px var(--green);animation:blink 1.4s steps(1) infinite}
+  .chat-new.on{display:inline-block}
+  .tab[aria-selected="true"] .chat-new{display:none}
+  @media (prefers-reduced-motion:reduce){.tab{transition:none}.chat-new{animation:none}}
+
+  .panel{flex:1;min-height:0;display:flex;flex-direction:column}
+  .panel[hidden]{display:none}
+  .panel:focus{outline:none}
+  .panel:focus-visible{outline:2px solid var(--green);outline-offset:-3px}
+
+  .log{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:18px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--green-soft) transparent}
   .msg{max-width:85%;padding:10px 14px;border-radius:10px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word;font-size:15px}
   .msg.assistant{align-self:flex-start;background:rgba(232,194,90,.08);border:1px solid var(--green-faint)}
   .msg.assistant::before{content:'PROPHET › ';color:var(--green)}
@@ -121,7 +135,7 @@
 
   form.input{display:flex;gap:10px;padding:14px;border-top:1px solid var(--green-faint)}
   form.input textarea{
-    flex:1;resize:none;height:46px;max-height:140px;padding:12px 14px;border-radius:10px;
+    flex:1;min-width:0;resize:none;height:46px;max-height:140px;padding:12px 14px;border-radius:10px;
     background:rgba(0,0,0,.55);color:var(--text);border:1px solid var(--green-soft);
     font:inherit;font-size:15px;outline:none;
   }
@@ -135,21 +149,10 @@
   button:active{transform:scale(.97)}
   button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
   button.ghost{background:transparent;color:var(--green);border:1px solid var(--green)}
+  button:focus-visible{outline:2px solid #fff3c4;outline-offset:2px}
 
-  /* ---------- Vault ---------- */
-  .vault{grid-column:1/-1;background:var(--panel);border:1px solid var(--green-soft);border-radius:14px;padding:18px;backdrop-filter:blur(6px)}
-  .vault-toggle{
-    width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;
-    background:transparent;color:var(--green);border:none;box-shadow:none;padding:4px 2px;min-height:44px;
-    font-family:'Orbitron',sans-serif;font-size:16px;letter-spacing:.15em;text-align:left;border-radius:8px;
-  }
-  .vault-toggle:hover{box-shadow:none;text-shadow:0 0 12px var(--green)}
-  .vault-toggle:focus-visible{outline:2px solid var(--green);outline-offset:4px}
-  .vault-toggle > span{pointer-events:none}
-  .vault-toggle:hover .chev,.vault-toggle:focus-visible .chev{border-color:var(--green);box-shadow:0 0 12px var(--green-soft)}
-  .vault-toggle[aria-expanded="true"] .chev{transform:rotate(180deg)}
-  .vault-body{margin-top:14px}
-  .vault-body[hidden]{display:none}
+  /* ---------- Vault panel (inside the box) ---------- */
+  .vault-panel{overflow-y:auto;overscroll-behavior:contain;padding:16px 18px 18px;scrollbar-width:thin;scrollbar-color:var(--green-soft) transparent}
   .vault-tools{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
   .vault-tools input{
     flex:1 1 220px;min-width:0;min-height:40px;padding:0 14px;border-radius:10px;
@@ -161,19 +164,18 @@
   .vault-more button[hidden]{display:none}
   .vault-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
   .vault-grid .empty{grid-column:1/-1}
-  .vault-item{border:1px solid var(--green-faint);border-radius:10px;padding:12px;background:rgba(0,0,0,.4)}
+  .vault-item{min-width:0;border:1px solid var(--green-faint);border-radius:10px;padding:12px;background:rgba(0,0,0,.4);overflow-wrap:anywhere}
   .vault-item h4{color:var(--green);font-size:15px;margin-bottom:6px}
   .vault-item p{font-size:13px;color:var(--text);opacity:.85;line-height:1.45}
   .vault-item .meta{font-size:12px;color:var(--muted);margin-top:6px}
   .empty{color:var(--muted);font-size:14px}
-  /* Desktop: the 3 shown cards fill the vault width in one even row (1-2 search results keep the same width, left-aligned). */
+  /* Desktop: 3 equal cards side by side inside the box (1-2 search results keep the same width, left-aligned). */
   @media (min-width:861px){
-    .vault{padding:22px 26px}
-    .vault-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
-    .vault-item{padding:18px 20px;border-radius:12px}
-    .vault-item h4{font-size:17px;margin-bottom:8px}
-    .vault-item p{font-size:15px;line-height:1.55}
-    .vault-item .meta{font-size:13px}
+    .vault-panel{padding:18px 20px 20px}
+    .vault-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .vault-item{padding:14px 16px;border-radius:12px}
+    .vault-item h4{font-size:15px;margin-bottom:8px}
+    .vault-item p{font-size:14px;line-height:1.5}
   }
 
   @media (max-width:860px){
@@ -185,23 +187,16 @@
     .hero-frame{width:min(55vw,200px)}
     .hero h1{margin-top:14px;white-space:normal;overflow-wrap:break-word;font-size:clamp(22px,7vw,34px)}
     .hero p{font-size:12px;letter-spacing:.25em}
-    .chat{height:70vh;height:min(70dvh,560px);min-height:360px}
-    .chat-head[role="button"]{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
-    .chat-head[role="button"]:focus-visible{outline:2px solid var(--green);outline-offset:-4px;border-radius:14px}
-    .chat-head[role="button"] .chat-arrow{display:grid;width:30px;height:30px}
-    .chat-head[role="button"] > *{pointer-events:none}
-    .chat-head[aria-expanded="true"] .chat-arrow{transform:rotate(180deg)}
-    .chat.collapsed{height:auto;min-height:0}
-    .chat.collapsed .chat-head{border-bottom:none}
-    .chat.collapsed .chat-body{display:none}
+    /* svh = small viewport: does not change when the URL bar hides/shows, so the box never jumps. */
+    .box{height:70vh;height:min(72svh,600px);min-height:380px}
+    .tab{min-height:44px}
     .msg{max-width:90%}
     form.input{padding:12px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
     form.input textarea{font-size:16px}           /* 16px+ stops iOS zoom on focus */
     form.input button{min-height:46px;min-width:76px}
     .chat-tools button{min-height:40px}
     .power-card input,.power-card textarea{font-size:16px}   /* no iOS zoom */
-    .vault{padding:14px}
-    .vault-toggle{font-size:14px}
+    .vault-panel{padding:14px}
     .vault-tools input{font-size:16px;min-height:44px}
     .vault-tools button{flex:1 1 auto;min-height:44px}
     .vault-more button{min-height:44px;min-width:160px}
@@ -212,18 +207,17 @@
     .hero-frame{width:min(50vw,180px)}
     .hero h1{letter-spacing:.05em}
     .hero p{letter-spacing:.2em}
-    .chat-head{flex-wrap:wrap;gap:6px 10px;padding:12px 14px}
-    .chat-head strong{font-size:12px}
-    .chat-head span{font-size:11px}
-    .chat-head[role="button"] .chat-new{order:3}
-    .chat-head[role="button"] .chat-arrow{order:4;margin-left:auto}
-    .chat-head[role="button"] #status-text{order:5;flex-basis:100%;margin-left:20px}
+    .box-head{padding:10px 12px;gap:8px}
+    .tabs{flex:1 1 auto;min-width:0}
+    .tab{flex:1 1 0;justify-content:center;padding:0 10px;font-size:11px;letter-spacing:.1em;gap:6px}
+    .status{gap:6px}
+    #status-text{font-size:11px}
     .log{padding:14px 12px}
     .msg{font-size:15px;padding:9px 12px}
     form.input{gap:8px}
     form.input textarea{padding:12px}
     form.input textarea::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .vault-toggle{font-size:13px;letter-spacing:.1em}
+    .vault-panel{padding:12px}
     .vault-tools input{flex:1 1 100%}
     .vault-tools button{flex:1 1 0}
     .vault-grid{grid-template-columns:minmax(0,1fr)}
@@ -233,6 +227,7 @@
     .chat-tools{padding:8px 12px 0}
     .chat-tools button{flex:1 1 auto}
   }
+  @media (max-width:400px){ #status-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap} }
 </style>
 </head>
 <body>
@@ -248,30 +243,25 @@
     <p>Superpower Creator</p>
   </section>
 
-  <section class="chat" aria-label="Chat with The Prophet">
-    <header class="chat-head">
-      <div class="dot" id="status-dot"></div>
-      <strong>THE PROPHET // ONLINE</strong>
-      <span id="status-text">secure channel</span>
-      <em class="chat-new" id="chat-new" aria-hidden="true">NEW</em>
-      <b class="chev chat-arrow" aria-hidden="true"></b>
+  <section class="box" aria-label="The Prophet and the Power Vault">
+    <header class="box-head">
+      <div class="tabs" role="tablist" aria-label="Choose: chat with The Prophet or browse the Power Vault">
+        <button class="tab" role="tab" type="button" id="tab-prophet" data-tab="prophet" aria-selected="true" aria-controls="panel-prophet" tabindex="0">PROPHET <em class="chat-new" id="chat-new" aria-hidden="true">NEW</em></button>
+        <button class="tab" role="tab" type="button" id="tab-vault" data-tab="vault" aria-selected="false" aria-controls="panel-vault" tabindex="-1">VAULT <span class="tab-count" id="vault-count"></span></button>
+      </div>
+      <div class="status" title="Connection to The Prophet"><div class="dot" id="status-dot"></div><span id="status-text">secure channel</span></div>
     </header>
-    <div class="chat-body" id="chat-body">
-    <div class="log" id="log" aria-live="polite"></div>
-    <div class="chat-tools"><button class="ghost" id="add-own" type="button">+ ADD YOUR OWN POWER</button></div>
-    <form class="input" id="chat-form">
-      <textarea id="chat-input" placeholder="Describe the power you want..." rows="1" maxlength="2000"></textarea>
-      <button type="submit" id="send-btn">SEND</button>
-    </form>
-    </div>
-  </section>
 
-  <section class="vault" aria-label="Saved superpowers">
-    <button class="vault-toggle" id="vault-toggle" type="button" aria-expanded="false" aria-controls="vault-body">
-      <span>POWER VAULT <span id="vault-count"></span></span>
-      <span class="chev arrow" aria-hidden="true"></span>
-    </button>
-    <div class="vault-body" id="vault-body" hidden>
+    <div class="panel chat-panel" id="panel-prophet" role="tabpanel" aria-labelledby="tab-prophet">
+      <div class="log" id="log" aria-live="polite"></div>
+      <div class="chat-tools"><button class="ghost" id="add-own" type="button">+ ADD YOUR OWN POWER</button></div>
+      <form class="input" id="chat-form">
+        <textarea id="chat-input" placeholder="Describe the power you want..." rows="1" maxlength="2000" aria-label="Message to The Prophet"></textarea>
+        <button type="submit" id="send-btn">SEND</button>
+      </form>
+    </div>
+
+    <div class="panel vault-panel" id="panel-vault" role="tabpanel" aria-labelledby="tab-vault" tabindex="0" hidden>
       <div class="vault-tools">
         <input type="search" id="vault-search" placeholder="Search the vault..." maxlength="60" aria-label="Search powers" autocomplete="off">
         <button class="ghost" id="shuffle-vault" type="button">SHUFFLE</button>
@@ -404,7 +394,10 @@
     statusText.textContent = ok ? 'secure channel' : 'signal lost';
   }
 
-  function scrollDown() { log.scrollTop = log.scrollHeight; }
+  function scrollDown() {
+    if (typeof activeTab !== 'undefined' && activeTab !== 'prophet') { logNeedsBottom = true; return; }
+    log.scrollTop = log.scrollHeight;
+  }
 
   function addMessage(role, text) {
     const el = document.createElement('div');
@@ -500,6 +493,12 @@
         card.classList.add('saved');
         label.textContent = 'SAVED TO THE VAULT';
         nameIn.disabled = true; descIn.disabled = true; btn.disabled = true;
+        const view = document.createElement('button');
+        view.type = 'button';
+        view.className = 'ghost view-in-vault';
+        view.textContent = 'VIEW IN VAULT';
+        view.addEventListener('click', () => showInVault(savedName));
+        actions.appendChild(view);
         onPowerSaved();
       } catch (e) {
         setBusy(false);
@@ -584,7 +583,7 @@
       else { setOnline(false); addMessage('system', "Can't reach The Prophet's worker: " + err.message); }
     } finally {
       sendBtn.disabled = false;
-      input.focus();
+      if (activeTab === 'prophet') input.focus();
     }
   }
 
@@ -606,54 +605,65 @@
     input.style.height = Math.min(input.scrollHeight, 140) + 'px';
   });
 
-  // ====== Collapsible chat (mobile only, <=860px) ======
-  const chatEl = document.querySelector('.chat');
-  const chatHead = chatEl.querySelector('.chat-head');
+  // ====== One box, two panels: pill toggle (WAI-ARIA tabs, automatic activation) ======
+  // Panels are only hidden/shown, never rebuilt, so chat history, typed text, cards and the vault's
+  // search/shuffle all survive a flip. Scroll positions are saved and restored explicitly.
   const chatNew = document.getElementById('chat-new');
-  const mobileQuery = window.matchMedia('(max-width: 860px)');
-  let chatOpen = true;
-  function setChatOpen(open) {
-    chatOpen = open;
-    const mobile = mobileQuery.matches;
-    chatEl.classList.toggle('collapsed', mobile && !open);
-    if (mobile) chatHead.setAttribute('aria-expanded', String(open));
-    if (open) { chatNew.classList.remove('on'); chatHead.removeAttribute('aria-description'); scrollDown(); }
-  }
-  function applyChatMode() {
-    if (mobileQuery.matches) {
-      chatHead.setAttribute('role', 'button');
-      chatHead.tabIndex = 0;
-      chatHead.setAttribute('aria-controls', 'chat-body');
-      chatHead.setAttribute('aria-label', 'Toggle chat with The Prophet');
-      setChatOpen(chatOpen);
-    } else {   // desktop: always open, no toggle
-      ['role', 'tabindex', 'aria-controls', 'aria-expanded', 'aria-label'].forEach(a => chatHead.removeAttribute(a));
-      chatEl.classList.remove('collapsed');
-      chatNew.classList.remove('on');
+  const tabEls = [...document.querySelectorAll('.tabs [role="tab"]')];
+  const panels = { prophet: document.getElementById('panel-prophet'), vault: document.getElementById('panel-vault') };
+  const scrollers = { prophet: log, vault: panels.vault };
+  const scrollMem = { prophet: 0, vault: 0 };
+  let activeTab = 'prophet';
+  let logNeedsBottom = false;   // chat content arrived while the Prophet panel was hidden
+
+  function selectTab(name, focusTab) {
+    const tab = tabEls.find(t => t.dataset.tab === name);
+    if (!tab) return;
+    if (name !== activeTab) {
+      scrollMem[activeTab] = scrollers[activeTab].scrollTop;
+      activeTab = name;
+      tabEls.forEach(t => {
+        const on = t === tab;
+        t.setAttribute('aria-selected', String(on));
+        t.tabIndex = on ? 0 : -1;
+        panels[t.dataset.tab].hidden = !on;
+      });
+      if (name === 'prophet') {
+        chatNew.classList.remove('on');
+        tabEls[0].removeAttribute('aria-description');
+        if (logNeedsBottom) { logNeedsBottom = false; scrollDown(); } else log.scrollTop = scrollMem.prophet;
+      } else {
+        panels.vault.scrollTop = scrollMem.vault;
+        if (!vault.loaded && !vault.loading) loadVault();
+      }
     }
+    if (focusTab) tab.focus();
   }
-  chatHead.addEventListener('click', () => { if (mobileQuery.matches) setChatOpen(!chatOpen); });
-  chatHead.addEventListener('keydown', e => {
-    if (!mobileQuery.matches || (e.key !== 'Enter' && e.key !== ' ')) return;
-    e.preventDefault(); setChatOpen(!chatOpen);
+  tabEls.forEach(t => t.addEventListener('click', () => selectTab(t.dataset.tab)));
+  document.querySelector('.tabs').addEventListener('keydown', e => {
+    const i = tabEls.findIndex(t => t.dataset.tab === activeTab);
+    let next = -1;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (i + 1) % tabEls.length;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (i - 1 + tabEls.length) % tabEls.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = tabEls.length - 1;
+    if (next < 0) return;
+    e.preventDefault();
+    selectTab(tabEls[next].dataset.tab, true);
   });
-  if (mobileQuery.addEventListener) mobileQuery.addEventListener('change', applyChatMode); else mobileQuery.addListener(applyChatMode);
-  applyChatMode();
   function markUnread() {
-    if (mobileQuery.matches && !chatOpen) { chatNew.classList.add('on'); chatHead.setAttribute('aria-description', 'New message from The Prophet'); }
+    if (activeTab !== 'prophet') { chatNew.classList.add('on'); tabEls[0].setAttribute('aria-description', 'New message from The Prophet'); }
   }
 
   // ====== Vault ======
   const PAGE = 3;            // powers per view (list, search, shuffle)
   const SHUFFLE_POOL = 9;    // random fetch size; we pick PAGE from it, avoiding the last shuffle's powers
-  const vaultToggle = document.getElementById('vault-toggle');
-  const vaultBody = document.getElementById('vault-body');
   const vaultCount = document.getElementById('vault-count');
   const vaultGrid = document.getElementById('vault-grid');
   const vaultStatus = document.getElementById('vault-status');
   const vaultSearch = document.getElementById('vault-search');
   const moreBtn = document.getElementById('vault-more');
-  const vault = { open: false, loaded: false, q: '', random: true, cursor: null, shown: 0, total: null, req: 0, lastIds: [] };
+  const vault = { loading: false, loaded: false, q: '', random: true, cursor: null, shown: 0, total: null, req: 0, lastIds: [] };
 
   function setCount(n) {
     if (typeof n === 'number') vault.total = n;
@@ -693,6 +703,7 @@
   // append=false starts a fresh list (search / shuffle / refresh); append=true = LOAD MORE.
   async function loadVault(append = false) {
     const id = ++vault.req;
+    vault.loading = true;
     const params = new URLSearchParams({ limit: String(vault.random ? SHUFFLE_POOL : PAGE) });
     if (vault.q) params.set('q', vault.q);
     if (vault.random) params.set('random', '1');
@@ -720,7 +731,7 @@
       const total = typeof data.total === 'number' ? data.total : vault.shown;
       if (!vault.q) setCount(total);
       if (!vault.shown) {
-        emptyNote(vault.q ? 'The Prophet knows no such power. Yet.' : 'The vault is empty. Forge your first power above.');
+        emptyNote(vault.q ? 'The Prophet knows no such power. Yet.' : 'The vault is empty. Forge your first power with The Prophet.');
         vaultStatus.textContent = vault.q ? 'No matches for "' + vault.q + '"' : '';
       } else if (vault.random) {
         vaultStatus.textContent = vault.q
@@ -739,18 +750,9 @@
       vaultStatus.textContent = '';
       emptyNote('Vault offline: ' + err.message);
     } finally {
-      if (id === vault.req) moreBtn.disabled = false;
+      if (id === vault.req) { moreBtn.disabled = false; vault.loading = false; }
     }
   }
-
-  function setVaultOpen(open) {
-    vault.open = open;
-    vaultToggle.setAttribute('aria-expanded', String(open));
-    vaultBody.hidden = !open;
-    if (open && !vault.loaded) loadVault();
-  }
-
-  vaultToggle.addEventListener('click', () => setVaultOpen(!vault.open));
 
   let searchTimer = null;
   vaultSearch.addEventListener('input', () => {
@@ -777,31 +779,32 @@
   });
   moreBtn.addEventListener('click', () => { if (vault.cursor && !vault.random) loadVault(true); });
 
-  // Open the vault filtered to one power (from a chat match).
+  // Tapping a chat match card (or VIEW IN VAULT on a saved card): flip to the Vault, searched to that power.
+  // Only on that explicit tap; the Prophet never flips tabs by himself.
   function showInVault(name) {
     const q = String(name).replace(/\s+/g, ' ').trim().slice(0, 60);
     clearTimeout(searchTimer);
     vaultSearch.value = q;
     vault.q = q; vault.random = false; vault.cursor = null;
-    vault.open = true;
-    vaultToggle.setAttribute('aria-expanded', 'true');
-    vaultBody.hidden = false;
+    scrollMem.vault = 0;
+    selectTab('vault');
+    panels.vault.scrollTop = 0;
     loadVault();
-    vaultToggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   document.getElementById('add-own').addEventListener('click', () => addPowerCard(null));
 
-  // After a power is saved: refresh the count, and the list if it's open.
+  // After a power is saved: refresh the count and the vault list (3 newest, or the current search),
+  // so it is current when the Vault tab is opened. The chat stays where it is.
   function onPowerSaved() {
     loadCount();
-    if (vault.open) { vault.random = false; vault.cursor = null; loadVault(); }
-    else vault.loaded = false;
+    vault.random = false; vault.cursor = null;
+    loadVault();
   }
 
   // ====== Boot ======
   addMessage('assistant', "I am The Prophet. Tell me what kind of power you've always wanted, and we'll forge it together. When it's ready, edit it and save it to the vault. Ask me what's already in the vault, or add your own power.");
-  loadCount();
+  loadVault();   // preload the first shuffle (also fills the Vault count), so flipping to the Vault is instant
 </script>
 </body>
 </html>
